@@ -9,3 +9,21 @@ main_socket.setblocking(False)
 main_socket.listen(5)
 print('сокет создан')
 
+players = []
+while True:
+    try:
+        client_socket, addr = main_socket.accept()
+        print('подключился', addr)
+        client_socket.setblocking(False)
+        players.append(client_socket)
+    except BlockingIOError:
+        pass
+
+    for sock in players:
+        try:
+            data = sock.recv(1024).decode()
+            print('получено', data)
+        except:
+            pass
+
+    time.sleep(1)
