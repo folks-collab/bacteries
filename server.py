@@ -10,6 +10,8 @@ main_socket.listen(5)
 print('сокет создан')
 
 players = []
+
+
 while True:
     try:
         client_socket, addr = main_socket.accept()
@@ -22,8 +24,10 @@ while True:
     for sock in players:
         try:
             data = sock.recv(1024).decode()
-            print('получено', data)
+            print(f'получено: {data}')
+                
         except:
-            pass
-
-    time.sleep(1)
+            players.remove(sock)
+            sock.close()
+        print('сокет закрыт')
+    
