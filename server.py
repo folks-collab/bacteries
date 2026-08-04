@@ -25,9 +25,12 @@ while True:
         try:
             data = sock.recv(1024).decode()
             print(f'получено: {data}')
-                
-        except:
+
+        except BlockingIOError:
+            pass
+
+        except ConnectionResetError:
             players.remove(sock)
             sock.close()
-        print('сокет закрыт')
-    
+            print('сокет закрыт')
+    time.sleep(0.01)
