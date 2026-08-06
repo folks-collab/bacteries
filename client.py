@@ -20,11 +20,22 @@ screen = pygame.display.set_mode((WEIGHT, HEIGHT))
 pygame.display.set_caption('бактерии')
 run = True
 
+
+def created_msg(text, x, y):
+    font = pygame.font.SysFont("comic sans", 32)
+    msg = font.render(text, True, '#000000')
+    screen.blit(msg, (x,y))
+
+
 while run:
     events = pygame.event.get()
     ck.tick(fps)
 
     for event in events:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+
         if pygame.mouse.get_focused():
             pos = pygame.mouse.get_pos()
             CC = (WEIGHT//2, HEIGHT//2)
@@ -41,6 +52,7 @@ while run:
         if event.type == pygame.QUIT:
             run = False
     screen.fill('#cccccc')
+    created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
     pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
     pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
     pygame.display.flip()
