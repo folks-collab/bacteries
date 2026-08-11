@@ -1,5 +1,14 @@
 import socket
 import database
+import pygame
+
+
+pygame.init()
+
+
+SERVER_W, SERVER_H = 4000, 4000
+W, H = 300, 300
+FPS = 100
 
 
 class LocalPlayer:
@@ -12,9 +21,36 @@ class LocalPlayer:
         self.y = 500
         self.size = 50
         self.errors = 0
-        self.abf = 1
-        self.speedx = 0
-        self.speedy = 0
+        self.abf = 2
+        self.speedx = 2
+        self.speedy = 2
+
+    def update(self):
+        self.y += self.speedy
+        self.x += self.speedx
+
+    def changed_speed(self, vector):
+        vector = find(vector)
+        if vector[0] == 0 and vector[1] == 0:
+            self.speedx, self.speedy = 0,0
+        else:
+            self.speedx, self.speedy = vector[0] * self.abf, vector[1] * self.abf
+
+
+
+def find(vector:str):
+    first = vector.find('<')
+    second = vector.find('>')
+
+    if first < second and first>=0 :
+        result = vector[first+1:second]
+        result = result.split(",")
+        result = list(map(float, result))
+        return result
+    return ""
+
+
+
 
 
 def accept_new_clients(main_socket, players):
@@ -40,6 +76,7 @@ def handle_player_messages(players):
         try:
             data = player.socket.recv(1024).decode()
             print(f'получено: {data}')
+            players[player_id].changed_speed(data)
         except BlockingIOError:
             pass
         except (ConnectionResetError, OSError):
@@ -60,9 +97,34 @@ def main():
 
     players = {}
 
-    while True:
+    screen = pygame.display.set_mode((W, H))
+    pygame.display.set_caption('сервер')
+    clock = pygame.time.Clock()
+    server_run = True
+
+    while server_run:
+        clock.tick(FPS)
         accept_new_clients(main_socket, players)
         handle_player_messages(players)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                server_run = False
+
+        screen.fill("black")
+        for id in players:
+            player = players[id]
+            x = player.x * W//SERVER_W
+            y = player.y * H//SERVER_H
+            size = player.size * W//SERVER_W
+            pygame.draw.circle(screen, "orange", (x,y), size)
+            players[id].update()
+        pygame.display.flip()
+        
+    pygame.quit()
+    main_socket.close()
+    database.s.query(database.Player).delete()  
+    database.s.commit()
 
 
 if __name__ == "__main__":
