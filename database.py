@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, Integer, String
 
 
-engine = create_engine("postgresql+psycopg2://postgres:postgres@localhost/bacteries")
+engine = create_engine("postgresql+psycopg2://wallet_user:wallet_password@localhost/bacteries")
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 s = Session()
