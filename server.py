@@ -28,6 +28,11 @@ class LocalPlayer:
     def update(self):
         self.y += self.speedy
         self.x += self.speedx
+        database.s.query(database.Player).filter(database.Player.id == self.id).update({
+            "x":self.x,
+            "y":self.y
+        })
+        database.s.commit()
 
     def changed_speed(self, vector):
         vector = find(vector)
@@ -51,20 +56,24 @@ def find(vector:str):
 
 
 
-
-
 def accept_new_clients(main_socket, players):
     try:
         client_socket, addr = main_socket.accept()
         print('подключился', addr)
         client_socket.setblocking(False)
-        player = database.Player('player1', addr)
+        login = client_socket.recv(1024).decode()
+        if login.startswith("color"):
+            name, r,g,b = login[6:].replace("<", "").replace(">", "").split(",")
+        else:
+            name = "player1"
+            r, g, b = 255, 0, 0
+        player = database.Player(name, addr)
         database.s.merge(player)
         database.s.commit()
         addr_str = f'({addr[0]},{addr[1]})'
         data = database.s.query(database.Player).filter(database.Player.adress == addr_str)
         for user in data:
-            player = LocalPlayer(user.id, "player1", client_socket, addr_str)
+            player = LocalPlayer(user.id, user.name, client_socket, addr_str)
             players[user.id] = player
     except BlockingIOError:
         pass
@@ -101,6 +110,7 @@ def main():
     pygame.display.set_caption('сервер')
     clock = pygame.time.Clock()
     server_run = True
+    font = pygame.font.Font(None, 18) 
 
     while server_run:
         clock.tick(FPS)
@@ -118,12 +128,15 @@ def main():
             y = player.y * H//SERVER_H
             size = player.size * W//SERVER_W
             pygame.draw.circle(screen, "orange", (x,y), size)
+            nickname = font.render(player.name, True, "white")
+            nickname_rect = nickname.get_rect(center = (x, y - size - 10))
+            screen.blit(nickname, nickname_rect)
             players[id].update()
         pygame.display.flip()
         
     pygame.quit()
     main_socket.close()
-    database.s.query(database.Player).delete()  
+    database.s.query(database.Player).delete() 
     database.s.commit()
 
 

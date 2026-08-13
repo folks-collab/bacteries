@@ -2,11 +2,31 @@ import socket
 import pygame
 import time
 import math
+import menu
 
+def connect_to_server():
+    global main_socket
+    main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
+    main_socket.connect(("localhost", 22867))
+    main_socket.send((f"color:<{name},{color[0]},{color[1]},{color[2]}>").encode())
 
-main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-main_socket.connect(("localhost", 22867))
+    
+
+def disable():
+    global state
+    state = "game"
+    connect_to_server()
+    main_menu.disable()
+
+def set_name(value):
+    global name
+    name = value
+
+def set_color(value):
+    global color
+    color = value
+
 pygame.init()
 
 HEIGHT = 600
@@ -16,7 +36,16 @@ radius = 30
 fps = 100
 ck = pygame.time.Clock()
 
+name = None
+color = None
+main_socket = None
 screen = pygame.display.set_mode((WEIGHT, HEIGHT))
+main_menu = menu.Menu(screen, "Меню")
+main_menu.add.text_input("Имя: ", default="player1", onchange=set_name)
+main_menu.add.color_input("Цвет: ", default=(255, 0, 0), color_type='rgb', onchange=set_color)
+button1 = main_menu.add.button("Играть", disable)
+button2 = main_menu.add.button("Выход", exit)
+state = "menu"
 pygame.display.set_caption('бактерии')
 run = True
 
@@ -32,11 +61,7 @@ while run:
     ck.tick(fps)
 
     for event in events:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-
-        if pygame.mouse.get_focused():
+        if pygame.mouse.get_focused() and state == "game":
             pos = pygame.mouse.get_pos()
             CC = (WEIGHT//2, HEIGHT//2)
             vector = (pos[0]-CC[0], pos[1]-CC[1])
@@ -48,13 +73,16 @@ while run:
             if vector != old:
                 main_socket.send(f"<{vector[0]},{vector[1]}>".encode())
                 old = vector
-
+        
         if event.type == pygame.QUIT:
             run = False
-    screen.fill('#cccccc')
-    created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
-    pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
-    pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
+
+    if state == "game":
+        screen.fill('#cccccc')
+        created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
+        pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
+        pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
+    main_menu.flip(events)
     pygame.display.flip()
     
 pygame.quit()
