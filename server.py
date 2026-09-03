@@ -1,3 +1,4 @@
+import math
 import random
 import socket
 import database
@@ -13,12 +14,15 @@ W, H = 300, 300
 FPS = 100
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown', 'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow','Chartreuse', 'LawnGreen', 'Green', 'Lime', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',  'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'DeepSkyBlue',        'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
 MOBS_COUNT = 100
+visible_bacteries = {}
 
 
 
 
 class LocalPlayer:
     def __init__(self, id, name, color, socket, adress):
+        self.w_vision = 800
+        self.h_vision = 600
         self.id = id
         self.name = name
         self.socket = socket
@@ -108,6 +112,8 @@ def accept_new_clients(main_socket, players):
 
 def handle_player_messages(players):
     for player_id in list(players):
+        visible_bacteries[player_id] = []
+        
         if players[player_id].socket is None:
             continue
         player = players[player_id]
@@ -168,6 +174,46 @@ def main():
 
         accept_new_clients(main_socket, players)
         handle_player_messages(players)
+        for id in list(players):
+            visible_bacteries[id] = []
+        payers = list(players.items())
+        for i in range(len(payers)):
+            for j in range(i+1, len(payers)):
+                hero1 : LocalPlayer = payers[i][1]
+                hero2 : LocalPlayer = payers[j][1]
+                dist_x = abs(hero1.x - hero2.x)
+                dist_y = abs(hero1.y - hero2.y)
+                if dist_x <= hero1.w_vision//2+hero2.size and dist_y <= hero1.h_vision//2+hero2.size:
+                    distance = math.sqrt(dist_x**2 + dist_y**2)
+                    if distance <= hero1.size and hero2.size*1.1 <= hero1.size:
+                        pass 
+                    x_ = round(dist_x)
+                    y_ = round(dist_y)
+                    size_ = round(hero2.size)
+                    color_ = hero2.color
+                    data = f"{x_} {y_} {size_} {color_}"
+                    visible_bacteries[hero1.id].append(data)
+
+                if dist_x <= hero2.w_vision//2+hero1.size and dist_y <= hero2.h_vision//2+hero1.size:
+                    distance = math.sqrt(dist_x**2 + dist_y**2)
+                    if distance <= hero2.size and hero1.size*1.1 <= hero2.size:
+                        pass 
+                    x_ = round(-dist_x)
+                    y_ = round(-dist_y)
+                    size_ = round(hero1.size)
+                    color_ = hero1.color
+                    data = f"{x_} {y_} {size_} {color_}"
+                    visible_bacteries[hero2.id].append(data)
+
+        for id in list(players):
+            if players[id].socket is None:
+                continue
+            visible_bacteries[id] = f"<{",".join(visible_bacteries[id])}>"
+            try: 
+                players[id].socket.send(visible_bacteries[id].encode())
+            except ConnectionResetError:
+                pass
+                
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

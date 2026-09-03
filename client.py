@@ -81,6 +81,8 @@ while run:
     if state == "game":
         screen.fill('#cccccc')
         created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
+        data = main_socket.recv(1024).decode()
+        print(data)
         pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
         pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
     main_menu.flip(events)
