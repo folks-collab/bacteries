@@ -9,6 +9,7 @@ def connect_to_server():
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
     main_socket.connect(("localhost", 22867))
+    print(color)
     main_socket.send((f"color:<{name},{color[0]},{color[1]},{color[2]}>").encode())
 
     
@@ -36,8 +37,8 @@ radius = 30
 fps = 100
 ck = pygame.time.Clock()
 
-name = None
-color = None
+name = "player1"
+color = (255, 0, 0)
 main_socket = None
 screen = pygame.display.set_mode((WEIGHT, HEIGHT))
 main_menu = menu.Menu(screen, "Меню")

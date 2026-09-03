@@ -1,6 +1,8 @@
+import random
 import socket
 import database
 import pygame
+from russian_names import RussianNames
 
 
 pygame.init()
@@ -9,10 +11,14 @@ pygame.init()
 SERVER_W, SERVER_H = 4000, 4000
 W, H = 300, 300
 FPS = 100
+colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown', 'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow','Chartreuse', 'LawnGreen', 'Green', 'Lime', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',  'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'DeepSkyBlue',        'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
+MOBS_COUNT = 100
+
+
 
 
 class LocalPlayer:
-    def __init__(self, id, name, socket, adress):
+    def __init__(self, id, name, color, socket, adress):
         self.id = id
         self.name = name
         self.socket = socket
@@ -24,10 +30,27 @@ class LocalPlayer:
         self.abf = 2
         self.speedx = 2
         self.speedy = 2
+        self.color = color
 
     def update(self):
-        self.y += self.speedy
-        self.x += self.speedx
+        if self.x-self.size <= 0:
+            if self.speedx > 0:
+                self.x += self.speedx
+        elif self.x+self.size >= SERVER_W:
+            if self.speedx < 0:
+                self.x += self.speedx
+        else:
+            self.x += self.speedx
+
+        if self.y-self.size <= 0:
+            if self.speedy > 0:
+                self.y += self.speedy
+        elif self.y+self.size >= SERVER_H:
+            if self.speedy < 0:
+                self.y += self.speedy
+        else:
+            self.y += self.speedy
+
         database.s.query(database.Player).filter(database.Player.id == self.id).update({
             "x":self.x,
             "y":self.y
@@ -40,6 +63,9 @@ class LocalPlayer:
             self.speedx, self.speedy = 0,0
         else:
             self.speedx, self.speedy = vector[0] * self.abf, vector[1] * self.abf
+
+
+    
 
 
 
@@ -64,6 +90,7 @@ def accept_new_clients(main_socket, players):
         login = client_socket.recv(1024).decode()
         if login.startswith("color"):
             name, r,g,b = login[6:].replace("<", "").replace(">", "").split(",")
+            r, g, b = int(r), int(g), int(b)
         else:
             name = "player1"
             r, g, b = 255, 0, 0
@@ -73,7 +100,7 @@ def accept_new_clients(main_socket, players):
         addr_str = f'({addr[0]},{addr[1]})'
         data = database.s.query(database.Player).filter(database.Player.adress == addr_str)
         for user in data:
-            player = LocalPlayer(user.id, user.name, client_socket, addr_str)
+            player = LocalPlayer(user.id, user.name, (r, g, b), client_socket, addr_str)
             players[user.id] = player
     except BlockingIOError:
         pass
@@ -81,6 +108,8 @@ def accept_new_clients(main_socket, players):
 
 def handle_player_messages(players):
     for player_id in list(players):
+        if players[player_id].socket is None:
+            continue
         player = players[player_id]
         try:
             data = player.socket.recv(1024).decode()
@@ -95,6 +124,27 @@ def handle_player_messages(players):
             database.s.commit()
             print('сокет закрыт')
 
+def create_mobs(players):
+    names = RussianNames(count=MOBS_COUNT*2, patronymic=False, surname=False, rare=True)
+    names = list(set(names))
+    for mobs in range(MOBS_COUNT):
+        mob = database.Player(names[mobs], None)
+        mob.color = random.choice(colors)
+        mob.x, mob.y = random.randint(0, SERVER_W), random.randint(0, SERVER_H)
+        mob.size = random.randint(10, 100)
+        mob.x_speed = random.randint(-1, 1)
+        mob.y_speed = random.randint(-1, 1)
+        database.s.add(mob)
+        database.s.commit()
+        local_player = LocalPlayer(mob.id, mob.name, mob.color, None, None)
+        local_player.size = mob.size
+        local_player.x = mob.x
+        local_player.y = mob.y
+        local_player.speedx = mob.x_speed
+        local_player.speedy = mob.y_speed
+        players[mob.id] = local_player
+
+    
 
 def main():
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -105,6 +155,7 @@ def main():
     print('сокет создан')
 
     players = {}
+    create_mobs(players)
 
     screen = pygame.display.set_mode((W, H))
     pygame.display.set_caption('сервер')
@@ -114,6 +165,7 @@ def main():
 
     while server_run:
         clock.tick(FPS)
+
         accept_new_clients(main_socket, players)
         handle_player_messages(players)
 
@@ -123,11 +175,12 @@ def main():
 
         screen.fill("black")
         for id in players:
+            
             player = players[id]
             x = player.x * W//SERVER_W
             y = player.y * H//SERVER_H
             size = player.size * W//SERVER_W
-            pygame.draw.circle(screen, "orange", (x,y), size)
+            pygame.draw.circle(screen, player.color, (x, y), size)
             nickname = font.render(player.name, True, "white")
             nickname_rect = nickname.get_rect(center = (x, y - size - 10))
             screen.blit(nickname, nickname_rect)
