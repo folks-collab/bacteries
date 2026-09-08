@@ -13,9 +13,9 @@ SERVER_W, SERVER_H = 4000, 4000
 W, H = 300, 300
 FPS = 100
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown', 'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow','Chartreuse', 'LawnGreen', 'Green', 'Lime', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',  'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'DeepSkyBlue',        'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
-MOBS_COUNT = 100
+MOBS_COUNT = 25
 visible_bacteries = {}
-
+tick = -1
 
 
 
@@ -115,6 +115,9 @@ def handle_player_messages(players):
         visible_bacteries[player_id] = []
         
         if players[player_id].socket is None:
+            if tick % 400 == 0:
+                vector = f"<{random.randint(-1, 1)},{random.randint(-1, 1)}>"
+                players[player_id].changed_speed(vector)
             continue
         player = players[player_id]
         try:
@@ -153,6 +156,7 @@ def create_mobs(players):
     
 
 def main():
+    global tick
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
     main_socket.bind(("localhost", 22867))
@@ -170,6 +174,7 @@ def main():
     font = pygame.font.Font(None, 18) 
 
     while server_run:
+        tick += 1
         clock.tick(FPS)
 
         accept_new_clients(main_socket, players)
@@ -181,9 +186,9 @@ def main():
             for j in range(i+1, len(payers)):
                 hero1 : LocalPlayer = payers[i][1]
                 hero2 : LocalPlayer = payers[j][1]
-                dist_x = abs(hero1.x - hero2.x)
-                dist_y = abs(hero1.y - hero2.y)
-                if dist_x <= hero1.w_vision//2+hero2.size and dist_y <= hero1.h_vision//2+hero2.size:
+                dist_x = hero2.x - hero1.x
+                dist_y = hero2.y - hero1.y
+                if abs(dist_x) <= hero1.w_vision//2+hero2.size and abs(dist_y) <= hero1.h_vision//2+hero2.size:
                     distance = math.sqrt(dist_x**2 + dist_y**2)
                     if distance <= hero1.size and hero2.size*1.1 <= hero1.size:
                         pass 
@@ -194,7 +199,7 @@ def main():
                     data = f"{x_} {y_} {size_} {color_}"
                     visible_bacteries[hero1.id].append(data)
 
-                if dist_x <= hero2.w_vision//2+hero1.size and dist_y <= hero2.h_vision//2+hero1.size:
+                if abs(dist_x) <= hero2.w_vision//2+hero1.size and abs(dist_y) <= hero2.h_vision//2+hero1.size:
                     distance = math.sqrt(dist_x**2 + dist_y**2)
                     if distance <= hero2.size and hero1.size*1.1 <= hero2.size:
                         pass 

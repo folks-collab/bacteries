@@ -32,6 +32,7 @@ pygame.init()
 
 HEIGHT = 600
 WEIGHT = 800
+CC = (WEIGHT//2, HEIGHT//2)
 old = (0,0)
 radius = 30
 fps = 100
@@ -56,6 +57,26 @@ def created_msg(text, x, y):
     msg = font.render(text, True, '#000000')
     screen.blit(msg, (x,y))
 
+def find(vector:str):
+    l_index = vector.find('<')
+    r_index = vector.find('>')
+    if l_index < r_index and l_index>=0 :
+        result = vector[l_index+1:r_index]
+        if result:
+            result = result.split(",")
+            return result
+    return []
+
+def draw_enemies(enemies:list):
+    print(enemies)
+    for enemy in enemies:
+        x, y, size, color = enemy.split(" ")
+        x = int(x)
+        y = int(y)
+        size = int(size)
+        pygame.draw.circle(screen, color, (CC[0]+x, CC[1]+y), size)
+
+        
 
 while run:
     events = pygame.event.get()
@@ -64,7 +85,7 @@ while run:
     for event in events:
         if pygame.mouse.get_focused() and state == "game":
             pos = pygame.mouse.get_pos()
-            CC = (WEIGHT//2, HEIGHT//2)
+            
             vector = (pos[0]-CC[0], pos[1]-CC[1])
             lenv = math.sqrt(vector[0]**2 + vector[1]**2)
             vector = (vector[0]/lenv, vector[1]/lenv)
@@ -83,8 +104,12 @@ while run:
         created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
         data = main_socket.recv(1024).decode()
         print(data)
+        data = find(data)
+        print(data)
         pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
         pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
+        draw_enemies(data)
+
     main_menu.flip(events)
     pygame.display.flip()
     
