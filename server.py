@@ -15,7 +15,7 @@ FPS = 100
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown', 'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow','Chartreuse', 'LawnGreen', 'Green', 'Lime', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',  'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'DeepSkyBlue',        'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
 MOBS_COUNT = 25
 FOOD_SIZE = 10
-FOOD_COUNT = SERVER_W * SERVER_H // 40000000
+FOOD_COUNT = SERVER_W * SERVER_H // 40000
 visible_bacteries = {}
 tick = -1
 
@@ -43,6 +43,12 @@ class LocalPlayer:
         self.speedx = 2
         self.speedy = 2
         self.color = color
+        self.l = 1
+        self.is_active = True
+
+
+    def new_speed(self):
+        self.abf = 10/math.sqrt(self.size)
 
     def update(self):
         if self.x-self.size <= 0:
@@ -62,6 +68,13 @@ class LocalPlayer:
                 self.y += self.speedy
         else:
             self.y += self.speedy
+
+        if self.size >= self.w_vision/5:
+            if self.w_vision <= SERVER_W and self.h_vision <= SERVER_H:
+                self.l *= 2
+                self.w_vision = 800*self.l
+                self.h_vision = 800*self.l
+
 
         database.s.query(database.Player).filter(database.Player.id == self.id).update({
             "x":self.x,
@@ -190,7 +203,7 @@ def main():
     while server_run:
         tick += 1
         clock.tick(FPS)
-
+        print(len(foods))
         accept_new_clients(main_socket, players)
         handle_player_messages(players)
         for id in list(players):
@@ -205,11 +218,15 @@ def main():
                     distance = math.sqrt(dist_x**2 + dist_y**2)
                     if distance <= hero.size and food.size*1.1 <= hero.size:
                         hero.size = math.sqrt(hero.size**2 + food.size**2)
+                        
+                        
+                        #food.x = random.randint(0, SERVER_W)
+                        #food.y = random.randint(0, SERVER_H)
                         food.size = 0
                         foods.remove(food)
                     if hero.socket is not None and food.size > 0:
-                        x, y = round(dist_x), round(dist_y)
-                        size = round(food.size)
+                        x, y = round(dist_x/hero.l), round(dist_y/hero.l)
+                        size = round(food.size/hero.l)
                         color = food.color
                         visible_bacteries[hero.id].append(f"{x} {y} {size} {color}")
 
@@ -221,10 +238,11 @@ def main():
                 if abs(dist_x) <= hero1.w_vision//2+hero2.size and abs(dist_y) <= hero1.h_vision//2+hero2.size:
                     distance = math.sqrt(dist_x**2 + dist_y**2)
                     if distance <= hero1.size and hero2.size*1.1 <= hero1.size:
-                        pass 
-                    x_ = round(dist_x)
-                    y_ = round(dist_y)
-                    size_ = round(hero2.size)
+                        hero1.size = math.sqrt(hero1.size**2+hero2.size**2)
+                        hero2.is_active = False
+                    x_ = round(dist_x/hero1.l)
+                    y_ = round(dist_y/hero1.l)
+                    size_ = round(hero2.size/hero1.l)
                     color_ = hero2.color
                     nickname_ = hero2.name
                     data = f"{x_} {y_} {size_} {color_} {nickname_}"
@@ -233,19 +251,23 @@ def main():
                 if abs(dist_x) <= hero2.w_vision//2+hero1.size and abs(dist_y) <= hero2.h_vision//2+hero1.size:
                     distance = math.sqrt(dist_x**2 + dist_y**2)
                     if distance <= hero2.size and hero1.size*1.1 <= hero2.size:
-                        pass 
-                    x_ = round(-dist_x)
-                    y_ = round(-dist_y)
-                    size_ = round(hero1.size)
+                        hero2.size = math.sqrt(hero1.size**2+hero2.size**2)
+                        hero1.is_active = False
+                    x_ = round(-dist_x/hero2.l)
+                    y_ = round(-dist_y/hero2.l)
+                    size_ = round(hero1.size/hero2.l)
                     color_ = hero1.color
                     nickname_ = hero1.name
                     data = f"{x_} {y_} {size_} {color_} {nickname_}"
                     visible_bacteries[hero2.id].append(data)
 
         for id in list(players):
-            if players[id].socket is None:
+            if players[id].is_active == False:
+                del players[id]
                 continue
-            visible_bacteries[id] = f"<{round(players[id].size)},{','.join(visible_bacteries[id])}>"
+            if players[id].socket is None or players[id].is_active == False:
+                continue
+            visible_bacteries[id] = f"<{round(players[id].size/players[id].l)},{','.join(visible_bacteries[id])}>"
             try: 
                 players[id].socket.send(visible_bacteries[id].encode())
             except ConnectionResetError:
