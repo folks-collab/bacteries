@@ -14,9 +14,17 @@ W, H = 300, 300
 FPS = 100
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown', 'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow','Chartreuse', 'LawnGreen', 'Green', 'Lime', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',  'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'DeepSkyBlue',        'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
 MOBS_COUNT = 25
+FOOD_SIZE = 10
+FOOD_COUNT = SERVER_W * SERVER_H // 40000000
 visible_bacteries = {}
 tick = -1
 
+class Food:
+    def __init__(self, x, y, color):
+        self.x = x
+        self.y = y
+        self.color = color
+        self.size = FOOD_SIZE
 
 
 class LocalPlayer:
@@ -153,7 +161,11 @@ def create_mobs(players):
         local_player.speedy = mob.y_speed
         players[mob.id] = local_player
 
-    
+def create_food(foods):
+    for i in range(FOOD_COUNT):
+        food = Food(random.randint(0, SERVER_W), random.randint(0, SERVER_H), random.choice(colors))
+        foods.append(food)
+
 
 def main():
     global tick
@@ -165,6 +177,8 @@ def main():
     print('сокет создан')
 
     players = {}
+    foods = []
+    create_food(foods)
     create_mobs(players)
 
     screen = pygame.display.set_mode((W, H))
@@ -183,6 +197,22 @@ def main():
             visible_bacteries[id] = []
         payers = list(players.items())
         for i in range(len(payers)):
+            for food in foods:
+                hero : LocalPlayer = payers[i][1]
+                dist_x = food.x - hero.x
+                dist_y = food.y - hero.y
+                if abs(dist_x) <= hero.w_vision//2+food.size and abs(dist_y) <= hero.h_vision//2+food.size:
+                    distance = math.sqrt(dist_x**2 + dist_y**2)
+                    if distance <= hero.size and food.size*1.1 <= hero.size:
+                        hero.size = math.sqrt(hero.size**2 + food.size**2)
+                        food.size = 0
+                        foods.remove(food)
+                    if hero.socket is not None and food.size > 0:
+                        x, y = round(dist_x), round(dist_y)
+                        size = round(food.size)
+                        color = food.color
+                        visible_bacteries[hero.id].append(f"{x} {y} {size} {color}")
+
             for j in range(i+1, len(payers)):
                 hero1 : LocalPlayer = payers[i][1]
                 hero2 : LocalPlayer = payers[j][1]
@@ -196,7 +226,8 @@ def main():
                     y_ = round(dist_y)
                     size_ = round(hero2.size)
                     color_ = hero2.color
-                    data = f"{x_} {y_} {size_} {color_}"
+                    nickname_ = hero2.name
+                    data = f"{x_} {y_} {size_} {color_} {nickname_}"
                     visible_bacteries[hero1.id].append(data)
 
                 if abs(dist_x) <= hero2.w_vision//2+hero1.size and abs(dist_y) <= hero2.h_vision//2+hero1.size:
@@ -207,13 +238,14 @@ def main():
                     y_ = round(-dist_y)
                     size_ = round(hero1.size)
                     color_ = hero1.color
-                    data = f"{x_} {y_} {size_} {color_}"
+                    nickname_ = hero1.name
+                    data = f"{x_} {y_} {size_} {color_} {nickname_}"
                     visible_bacteries[hero2.id].append(data)
 
         for id in list(players):
             if players[id].socket is None:
                 continue
-            visible_bacteries[id] = f"<{",".join(visible_bacteries[id])}>"
+            visible_bacteries[id] = f"<{round(players[id].size)},{','.join(visible_bacteries[id])}>"
             try: 
                 players[id].socket.send(visible_bacteries[id].encode())
             except ConnectionResetError:

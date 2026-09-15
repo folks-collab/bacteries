@@ -70,11 +70,17 @@ def find(vector:str):
 def draw_enemies(enemies:list):
     print(enemies)
     for enemy in enemies:
-        x, y, size, color = enemy.split(" ")
-        x = int(x)
-        y = int(y)
-        size = int(size)
-        pygame.draw.circle(screen, color, (CC[0]+x, CC[1]+y), size)
+        try:
+            data= enemy.split(" ")
+            x = int(data[0])
+            y = int(data[1])
+            size = int(data[2])
+            color = data[3]
+            pygame.draw.circle(screen, color, (CC[0]+x, CC[1]+y), size)
+            if len(data) > 4:
+                created_msg(data[4], CC[0]+x, CC[1]+y)
+        except:
+            pass
 
         
 
@@ -100,12 +106,13 @@ while run:
             run = False
 
     if state == "game":
-        screen.fill('#cccccc')
+        screen.fill("#726C6B")
         created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
         data = main_socket.recv(1024).decode()
-        print(data)
         data = find(data)
-        print(data)
+        radius = int(data[0])
+        data = data[1:]
+
         pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
         pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
         draw_enemies(data)
