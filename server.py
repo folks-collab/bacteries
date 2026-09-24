@@ -18,6 +18,10 @@ FOOD_SIZE = 10
 FOOD_COUNT = SERVER_W * SERVER_H // 40000
 visible_bacteries = {}
 tick = -1
+players = {}
+foods = []
+
+
 
 class Food:
     def __init__(self, x, y, color):
@@ -35,8 +39,8 @@ class LocalPlayer:
         self.name = name
         self.socket = socket
         self.adress = adress
-        self.x = 500
-        self.y = 500
+        self.x = random.randint(30, SERVER_W-30)
+        self.y = random.randint(30, SERVER_H-30)
         self.size = 50
         self.errors = 0
         self.abf = 2
@@ -124,21 +128,29 @@ def accept_new_clients(main_socket, players):
         database.s.commit()
         addr_str = f'({addr[0]},{addr[1]})'
         data = database.s.query(database.Player).filter(database.Player.adress == addr_str)
+        if not players:
+            create_food(foods)
+            create_mobs(players)
         for user in data:
             player = LocalPlayer(user.id, user.name, (r, g, b), client_socket, addr_str)
             players[user.id] = player
     except BlockingIOError:
         pass
 
-
 def handle_player_messages(players):
     for player_id in list(players):
         visible_bacteries[player_id] = []
         
         if players[player_id].socket is None:
-            if tick % 400 == 0:
+            if tick % 300 == 0:
                 vector = f"<{random.randint(-1, 1)},{random.randint(-1, 1)}>"
                 players[player_id].changed_speed(vector)
+                need = MOBS_COUNT - len(list(players))
+                if need > 0:
+                    create_mobs(players, need)
+                need = FOOD_COUNT - len(foods)
+                if need > 0:
+                    create_food(foods, need)
             continue
         player = players[player_id]
         try:
@@ -154,28 +166,27 @@ def handle_player_messages(players):
             database.s.commit()
             print('сокет закрыт')
 
-def create_mobs(players):
-    names = RussianNames(count=MOBS_COUNT*2, patronymic=False, surname=False, rare=True)
+def create_mobs(players, need=MOBS_COUNT):
+    names = RussianNames(count=need*2, patronymic=False, surname=False, rare=True)
     names = list(set(names))
-    for mobs in range(MOBS_COUNT):
+    for mobs in range(need):
         mob = database.Player(names[mobs], None)
         mob.color = random.choice(colors)
-        mob.x, mob.y = random.randint(0, SERVER_W), random.randint(0, SERVER_H)
-        mob.size = random.randint(10, 100)
-        mob.x_speed = random.randint(-1, 1)
-        mob.y_speed = random.randint(-1, 1)
+        spawn: LocalPlayer = random.choice(foods)
+        foods.remove(spawn)
+        mob.x, mob.y = spawn.x, spawn.y
+        mob.size = random.randint(10, 60)
         database.s.add(mob)
         database.s.commit()
         local_player = LocalPlayer(mob.id, mob.name, mob.color, None, None)
         local_player.size = mob.size
         local_player.x = mob.x
         local_player.y = mob.y
-        local_player.speedx = mob.x_speed
-        local_player.speedy = mob.y_speed
+        local_player.new_speed()
         players[mob.id] = local_player
 
-def create_food(foods):
-    for i in range(FOOD_COUNT):
+def create_food(foods, need=FOOD_COUNT):
+    for i in range(need):
         food = Food(random.randint(0, SERVER_W), random.randint(0, SERVER_H), random.choice(colors))
         foods.append(food)
 
@@ -189,10 +200,8 @@ def main():
     main_socket.listen(5)
     print('сокет создан')
 
-    players = {}
-    foods = []
-    create_food(foods)
-    create_mobs(players)
+    
+    
 
     screen = pygame.display.set_mode((W, H))
     pygame.display.set_caption('сервер')
@@ -203,7 +212,11 @@ def main():
     while server_run:
         tick += 1
         clock.tick(FPS)
-        print(len(foods))
+        real_players = list(filter(lambda p: p.socket is not None, players.values()))
+        if not real_players:
+            foods.clear()
+            players.clear()
+            
         accept_new_clients(main_socket, players)
         handle_player_messages(players)
         for id in list(players):
@@ -267,7 +280,11 @@ def main():
                 continue
             if players[id].socket is None or players[id].is_active == False:
                 continue
-            visible_bacteries[id] = f"<{round(players[id].size/players[id].l)},{','.join(visible_bacteries[id])}>"
+            r_ = round(players[id].size/players[id].l)
+            x_ = round(players[id].x/players[id].l)
+            y_ = round(players[id].y/players[id].l)
+            l_ = round(players[id].l)
+            visible_bacteries[id] = f"<{r_} {x_} {y_} {l_},{','.join(visible_bacteries[id])}>"
             try: 
                 players[id].socket.send(visible_bacteries[id].encode())
             except ConnectionResetError:

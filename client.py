@@ -4,6 +4,41 @@ import time
 import math
 import menu
 
+class Grid:
+    def __init__(self, screen, color):
+        self.screen = screen
+        self.color = color
+        self.x = 0
+        self.y = 0 
+        self.start_size = 200
+        self.size = self.start_size
+
+    def update(self, params:list[int]):
+        x, y, l = params
+        self.size = self.start_size//l
+        self.x = -self.size + (-x) % self.size
+        self.y = -self.size + (-y) % self.size
+        
+
+    def draw(self):
+        for i in range(WEIGHT // self.size + 2):
+            pygame.draw.line(
+                self.screen, 
+                self.color,
+                (self.x + i * self.size, 0),
+                (self.x + i * self.size, HEIGHT),
+                1
+            )
+        for i in range(HEIGHT // self.size + 2):
+            pygame.draw.line(
+                self.screen, 
+                self.color,
+                (0, self.y + i * self.size),
+                (WEIGHT, self.y + i * self.size),
+                1
+            )
+
+
 def connect_to_server():
     global main_socket
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -13,7 +48,6 @@ def connect_to_server():
     main_socket.send((f"color:<{name},{color[0]},{color[1]},{color[2]}>").encode())
 
     
-
 def disable():
     global state
     state = "game"
@@ -37,6 +71,8 @@ old = (0,0)
 radius = 30
 fps = 100
 ck = pygame.time.Clock()
+buffer = 1024
+
 
 name = "player1"
 color = (255, 0, 0)
@@ -58,6 +94,7 @@ def created_msg(text, x, y):
     screen.blit(msg, (x,y))
 
 def find(vector:str):
+    global buffer
     l_index = vector.find('<')
     r_index = vector.find('>')
     if l_index < r_index and l_index>=0 :
@@ -65,10 +102,10 @@ def find(vector:str):
         if result:
             result = result.split(",")
             return result
+    buffer = int(buffer*1.5)
     return []
 
 def draw_enemies(enemies:list):
-    print(enemies)
     for enemy in enemies:
         try:
             data= enemy.split(" ")
@@ -82,7 +119,8 @@ def draw_enemies(enemies:list):
         except:
             pass
 
-        
+grid = Grid(screen, "#5C4822")
+
 
 while run:
     events = pygame.event.get()
@@ -107,15 +145,33 @@ while run:
 
     if state == "game":
         screen.fill("#726C6B")
+        grid.draw()
         created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
-        data = main_socket.recv(1024).decode()
-        data = find(data)
-        radius = int(data[0])
-        data = data[1:]
+        try: 
+            raw_data = main_socket.recv(buffer)
+        except (ConnectionResetError, ConnectionAbortedError):
+            main_socket.close()
+            main_socket = None
+            state = "menu"
+            main_menu.enable()
+            continue
+        
 
+        data = find(raw_data.decode())
+
+        if not data:
+            continue
+
+        bacteries = data[1:]
+        data = list(map(int, data[0].split()))
+        radius = data[0]
+        params = data[1:]
+        grid.update(params)
+        
+        
         pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
         pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
-        draw_enemies(data)
+        draw_enemies(bacteries)
 
     main_menu.flip(events)
     pygame.display.flip()
