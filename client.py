@@ -40,7 +40,8 @@ class Grid:
 
 
 def connect_to_server():
-    global main_socket
+    global main_socket, buffer
+    buffer = 1024
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
     main_socket.connect(("localhost", 22867))
@@ -125,7 +126,7 @@ grid = Grid(screen, "#5C4822")
 while run:
     events = pygame.event.get()
     ck.tick(fps)
-
+    print(buffer)
     for event in events:
         if pygame.mouse.get_focused() and state == "game":
             pos = pygame.mouse.get_pos()
@@ -142,13 +143,15 @@ while run:
         
         if event.type == pygame.QUIT:
             run = False
-
+            main_socket.close()
+            main_socket = None
     if state == "game":
         screen.fill("#726C6B")
         grid.draw()
         created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
         try: 
             raw_data = main_socket.recv(buffer)
+            print(len(raw_data))
         except (ConnectionResetError, ConnectionAbortedError):
             main_socket.close()
             main_socket = None

@@ -41,7 +41,7 @@ class LocalPlayer:
         self.adress = adress
         self.x = random.randint(30, SERVER_W-30)
         self.y = random.randint(30, SERVER_H-30)
-        self.size = 50
+        self.size = 20
         self.errors = 0
         self.abf = 2
         self.speedx = 2
@@ -216,7 +216,7 @@ def main():
         if not real_players:
             foods.clear()
             players.clear()
-            
+
         accept_new_clients(main_socket, players)
         handle_player_messages(players)
         for id in list(players):
@@ -276,9 +276,11 @@ def main():
 
         for id in list(players):
             if players[id].is_active == False:
+                if players[id].socket is not None:
+                    players[id].socket.close()
                 del players[id]
                 continue
-            if players[id].socket is None or players[id].is_active == False:
+            if players[id].socket is None:
                 continue
             r_ = round(players[id].size/players[id].l)
             x_ = round(players[id].x/players[id].l)
