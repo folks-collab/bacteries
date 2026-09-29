@@ -49,7 +49,10 @@ class LocalPlayer:
         self.abf = 2
         self.speedx = 2
         self.speedy = 2
-        self.color = color
+        if isinstance(color, tuple):
+            self.color = "#{:02x}{:02x}{:02x}".format(*color)
+        else:
+            self.color = color
         self.l = 1
         self.is_active = True
 
