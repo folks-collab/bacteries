@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import socket
 import database
@@ -12,6 +13,8 @@ pygame.init()
 SERVER_W, SERVER_H = 4000, 4000
 W, H = 300, 300
 FPS = 100
+SERVER_HOST = os.getenv("BACTERIES_HOST", "0.0.0.0")
+SERVER_PORT = int(os.getenv("BACTERIES_PORT", "22867"))
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown', 'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow','Chartreuse', 'LawnGreen', 'Green', 'Lime', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',  'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'DeepSkyBlue',        'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
 MOBS_COUNT = 25
 FOOD_SIZE = 10
@@ -114,19 +117,26 @@ def find(vector:str):
 def accept_new_clients(main_socket, players):
     try:
         client_socket, addr = main_socket.accept()
-        print('подключился', addr)
-        client_socket.setblocking(False)
+    except BlockingIOError:
+        return
+
+    print('подключился', addr)
+    try:
+        client_socket.settimeout(3)
         login = client_socket.recv(1024).decode()
+        if not login:
+            client_socket.close()
+            return
         if login.startswith("color"):
             name, r,g,b = login[6:].replace("<", "").replace(">", "").split(",")
             r, g, b = int(r), int(g), int(b)
         else:
             name = "player1"
             r, g, b = 255, 0, 0
-        player = database.Player(name, addr)
+        addr_str = f'({addr[0]},{addr[1]})'
+        player = database.Player(name, addr_str)
         database.s.merge(player)
         database.s.commit()
-        addr_str = f'({addr[0]},{addr[1]})'
         data = database.s.query(database.Player).filter(database.Player.adress == addr_str)
         if not players:
             create_food(foods)
@@ -134,8 +144,10 @@ def accept_new_clients(main_socket, players):
         for user in data:
             player = LocalPlayer(user.id, user.name, (r, g, b), client_socket, addr_str)
             players[user.id] = player
-    except BlockingIOError:
-        pass
+        client_socket.setblocking(False)
+    except (socket.timeout, UnicodeDecodeError, ValueError):
+        client_socket.close()
+        print('не удалось принять нового клиента', addr)
 
 def handle_player_messages(players):
     for player_id in list(players):
@@ -154,7 +166,10 @@ def handle_player_messages(players):
             continue
         player = players[player_id]
         try:
-            data = player.socket.recv(1024).decode()
+            raw_data = player.socket.recv(1024)
+            if not raw_data:
+                raise ConnectionResetError
+            data = raw_data.decode()
             print(f'получено: {data}')
             players[player_id].changed_speed(data)
         except BlockingIOError:
@@ -195,10 +210,10 @@ def main():
     global tick
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-    main_socket.bind(("localhost", 22867))
+    main_socket.bind((SERVER_HOST, SERVER_PORT))
     main_socket.setblocking(False)
     main_socket.listen(5)
-    print('сокет создан')
+    print(f'сервер слушает {SERVER_HOST}:{SERVER_PORT}')
 
     
     

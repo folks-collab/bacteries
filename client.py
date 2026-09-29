@@ -1,8 +1,12 @@
 import socket
+import os
 import pygame
 import time
 import math
 import menu
+
+SERVER_HOST = os.getenv("BACTERIES_HOST", "localhost")
+SERVER_PORT = int(os.getenv("BACTERIES_PORT", "22867"))
 
 class Grid:
     def __init__(self, screen, color):
@@ -44,7 +48,7 @@ def connect_to_server():
     buffer = 1024
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-    main_socket.connect(("localhost", 22867))
+    main_socket.connect((SERVER_HOST, SERVER_PORT))
     print(color)
     main_socket.send((f"color:<{name},{color[0]},{color[1]},{color[2]}>").encode())
 
@@ -143,7 +147,8 @@ while run:
         
         if event.type == pygame.QUIT:
             run = False
-            main_socket.close()
+            if main_socket is not None:
+                main_socket.close()
             main_socket = None
     if state == "game":
         screen.fill("#726C6B")

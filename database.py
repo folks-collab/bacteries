@@ -1,10 +1,12 @@
-import psycopg2
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, Integer, String
 
 
-engine = create_engine("postgresql+psycopg2://postgres:postgres@localhost/bacteries")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///bacteries.db")
+engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 s = Session()

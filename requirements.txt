@@ -1,0 +1,4 @@
+pygame==2.6.1
+pygame-menu==4.5.2
+russian-names==0.1.2
+SQLAlchemy==2.0.43

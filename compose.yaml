@@ -1,0 +1,15 @@
+services:
+  server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "22867:22867"
+    volumes:
+      - bacteries-data:/app/data
+    environment:
+      DATABASE_URL: sqlite:////app/data/bacteries.db
+      BACTERIES_HOST: 0.0.0.0
+      BACTERIES_PORT: 22867
+
+volumes:
+  bacteries-data:
