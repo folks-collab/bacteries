@@ -153,7 +153,7 @@ while run:
     if state == "game":
         screen.fill("#726C6B")
         grid.draw()
-        created_msg("player1", WEIGHT//2, HEIGHT//2 - radius - 30)
+        created_msg(name, WEIGHT//2, HEIGHT//2 - radius - 30)
         try: 
             raw_data = main_socket.recv(buffer)
             print(len(raw_data))
@@ -177,8 +177,8 @@ while run:
         grid.update(params)
         
         
-        pygame.draw.circle(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), radius)
-        pygame.draw.line(screen, '#ff0000', (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
+        pygame.draw.circle(screen, color , (WEIGHT//2, HEIGHT//2), radius)
+        pygame.draw.line(screen, color , (WEIGHT//2, HEIGHT//2), pygame.mouse.get_pos(), 3)
         draw_enemies(bacteries)
 
     main_menu.flip(events)
